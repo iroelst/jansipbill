@@ -1,0 +1,20 @@
+{
+  "name": "@jansipbill/bluetooth-classic",
+  "version": "1.0.0",
+  "description": "JanSipBill native Bluetooth Classic ESC/POS plugin",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "files": [
+    "android",
+    "dist"
+  ],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.2.1"
+  }
+}
