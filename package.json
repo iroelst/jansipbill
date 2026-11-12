@@ -1,0 +1,18 @@
+{
+  "name": "jansipbill",
+  "version": "1.0.1",
+  "private": true,
+  "description": "JanSipBill WiFi billing app with Android Bluetooth thermal printing",
+  "scripts": {
+    "android:sync": "cap sync android",
+    "android:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@jansipbill/bluetooth-classic": "file:plugins/jansipbill-bluetooth-classic"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.1"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "appId": "id.jansipbill.app",
+  "appName": "JanSipBill",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
