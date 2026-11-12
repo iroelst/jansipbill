@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "JanSipBill - Manajemen Tagihan WiFi",
+  "short_name": "JanSipBill",
+  "description": "Aplikasi pengelolaan pelanggan, tagihan, dan pembayaran layanan WiFi.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f8ff",
+  "theme_color": "#1769d2",
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ]
+}
