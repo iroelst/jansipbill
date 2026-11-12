@@ -94,9 +94,22 @@ public class BluetoothClassicPlugin extends Plugin {
                 if (adapter == null || !adapter.isEnabled()) { call.reject("Bluetooth tidak aktif."); return; }
                 if (socket != null) { try { socket.close(); } catch (Exception ignored) {} socket = null; }
                 BluetoothDevice device = adapter.getRemoteDevice(address);
-                adapter.cancelDiscovery();
-                BluetoothSocket newSocket = device.createRfcommSocketToServiceRecord(SPP_UUID);
-                newSocket.connect();
+                // The device is already paired. Do not call cancelDiscovery() here:
+                // on Android 12+ it also requires BLUETOOTH_SCAN and can fail even
+                // when Nearby Devices / BLUETOOTH_CONNECT is granted.
+                BluetoothSocket newSocket = null;
+                Exception secureError = null;
+                try {
+                    newSocket = device.createRfcommSocketToServiceRecord(SPP_UUID);
+                    newSocket.connect();
+                } catch (Exception e) {
+                    secureError = e;
+                    try { if (newSocket != null) newSocket.close(); } catch (Exception ignored) {}
+                    // Some low-cost ESC/POS printers expose SPP only through an
+                    // insecure RFCOMM socket. Try that as a compatibility fallback.
+                    newSocket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID);
+                    newSocket.connect();
+                }
                 socket = newSocket;
                 connectedDevice = device;
                 JSObject result = new JSObject();
@@ -105,7 +118,8 @@ public class BluetoothClassicPlugin extends Plugin {
                 result.put("address", address);
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject("Tidak dapat menghubungkan printer. Pastikan printer sudah dipair dan mendukung Bluetooth Classic SPP.", e);
+                String detail = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage());
+                call.reject("Koneksi Bluetooth SPP gagal (" + detail + "). Pastikan printer menyala, tidak terhubung ke HP lain, dan mendukung Bluetooth Classic SPP.", e);
             }
         }).start();
     }
