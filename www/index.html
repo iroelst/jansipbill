@@ -110,9 +110,12 @@ import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, ge
 
 // GANTI dengan konfigurasi Firebase milik Anda (Firebase Console > Project settings > Your apps).
 const firebaseConfig = {
- apiKey: "GANTI_API_KEY", authDomain: "GANTI_PROJECT.firebaseapp.com",
- projectId: "GANTI_PROJECT_ID", storageBucket: "GANTI_PROJECT.appspot.com",
- messagingSenderId: "GANTI_SENDER_ID", appId: "GANTI_APP_ID"
+ apiKey: "AIzaSyDxISTRPof-oxFBm5HxqWwUQ5kmo3fXhDU",
+ authDomain: "jansipbill.firebaseapp.com",
+ projectId: "jansipbill",
+ storageBucket: "jansipbill.firebasestorage.app",
+ messagingSenderId: "196180116387",
+ appId: "1:196180116387:web:bd6db188d925399d3c1016"
 };
 let app,auth,db,customers=[],invoices=[],payments=[],currentUser=null,selectedImport=[],billingDueDay=20,printerConnected=false,printerAddress=localStorage.getItem('jansipbillPrinterAddress')||'';
 const configured = firebaseConfig.apiKey !== "GANTI_API_KEY" && firebaseConfig.projectId !== "GANTI_PROJECT_ID";
