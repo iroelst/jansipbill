@@ -86,7 +86,7 @@ label{display:block;font-size:12px;font-weight:700;color:#68748a;margin:0 0 6px}
  <input type="hidden" id="cDocId"><div class="grid grid-cols-2 gap-3"><div class="field"><label>ID Pelanggan *</label><input id="cCode" placeholder="WIFI001"></div><div class="field"><label>Nama pelanggan *</label><input id="cName" placeholder="Nama lengkap"></div><div class="field"><label>No. telepon / WhatsApp</label><input id="cPhone" placeholder="08xxxxxxxxxx"></div><div class="field"><label>Paket Internet</label><select id="cPackage"><option value="">Pilih paket</option><option>Gogoniti 10M</option><option>Semeru 20M</option><option>Embung 30M</option><option>Dewimiri 50M</option></select></div><div class="field"><label>Tarif bulanan (Rp) *</label><input id="cPrice" type="number" min="0" placeholder="150000"></div><div class="field"><label>Tanggal pemasangan</label><input id="cInstall" type="date"></div><div class="field col-span-2"><label>Alamat</label><textarea id="cAddress" rows="2" placeholder="Alamat pelanggan"></textarea></div><div class="field col-span-2"><label>Status</label><select id="cStatus"><option>Aktif</option><option>Nonaktif</option></select></div></div>
  <div class="flex justify-end gap-2 mt-2"><button class="btn ghost" onclick="closeModal('customerModal')">Batal</button><button class="btn" onclick="saveCustomer()">Simpan pelanggan</button></div></div></div>
 <div class="modal" id="importModal"><div class="modalbox"><div class="flex justify-between items-center mb-4"><div><h2 class="text-xl font-extrabold">Import pelanggan Excel</h2><p class="muted text-xs">Impor data dari .xlsx, .xls, atau .csv</p></div><button class="btn ghost" onclick="closeModal('importModal')">✕</button></div>
- <div class="rounded-xl p-4 mb-4" style="background:#f3f6ff"><b class="text-sm">Format kolom yang disarankan</b><p class="text-xs muted mt-1">no, nama_pelanggan, alamat, paket_internet, nominal_tagihan</p><button class="btn secondary mt-3 text-xs" onclick="downloadTemplate()">Unduh template Excel</button></div>
+ <div class="rounded-xl p-4 mb-4" style="background:#f3f6ff"><b class="text-sm">Format kolom yang disarankan</b><p class="text-xs muted mt-1">Kolom: No, ID Pelanggan, Nama Pelanggan, No HP, Alamat, Paket Internet, Tarif Bulanan. Paket Free otomatis dilewati.</p><button class="btn secondary mt-3 text-xs" onclick="downloadTemplate()">Unduh template Excel</button></div>
  <div class="field"><label>Pilih file Excel</label><input type="file" id="excelFile" accept=".xlsx,.xls,.csv"></div><div id="importPreview" class="text-xs muted mb-4"></div>
  <div class="flex justify-end gap-2"><button class="btn ghost" onclick="closeModal('importModal')">Batal</button><button class="btn" id="importBtn" onclick="processImport()" disabled>Import data</button></div></div></div>
 <div class="modal" id="paymentModal"><div class="modalbox"><div class="flex justify-between items-center mb-4"><h2 class="text-xl font-extrabold">Catat pembayaran</h2><button class="btn ghost" onclick="closeModal('paymentModal')">✕</button></div><input type="hidden" id="payInvoiceId"><div id="payInfo" class="rounded-xl p-4 mb-4 text-sm" style="background:#f3f6ff"></div><div class="field"><label>Tanggal pembayaran</label><input type="date" id="payDate"></div><div class="field"><label>Metode pembayaran</label><select id="payMethod"><option>Tunai</option><option>Transfer Bank</option><option>QRIS</option><option>Lainnya</option></select></div><div class="field"><label>Jumlah dibayar (Rp)</label><input type="number" id="payAmount" min="1"></div><div class="flex justify-end gap-2"><button class="btn ghost" onclick="closeModal('paymentModal')">Batal</button><button class="btn" onclick="savePayment()">Simpan pembayaran</button></div></div></div>
@@ -144,10 +144,83 @@ window.renderCustomers=()=>{let q=val('customerSearch').toLowerCase();let rows=c
 window.removeCustomer=async id=>{if(!confirm('Hapus data pelanggan ini? Tagihan lama tidak ikut dihapus.'))return;try{await deleteDoc(doc(db,'customers',id));toast('Pelanggan dihapus.');}catch(e){toast(e.message);}};
 window.openImport=()=>{selectedImport=[];document.getElementById('excelFile').value='';document.getElementById('importPreview').textContent='';document.getElementById('importBtn').disabled=true;document.getElementById('importModal').classList.add('show');};
 window.downloadTemplate=()=>{let ws=XLSX.utils.json_to_sheet([{no:1,nama_pelanggan:'Budi',alamat:'Jl. Contoh No. 1',paket_internet:'Gogoniti 10M',nominal_tagihan:150000}]);let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Pelanggan');XLSX.writeFile(wb,'template-pelanggan-wifi.xlsx');};
-document.getElementById('excelFile').addEventListener('change',async e=>{let f=e.target.files[0];if(!f)return;try{let wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});selectedImport=raw.map(r=>{let n={};Object.keys(r).forEach(k=>n[String(k).toLowerCase().trim().replace(/\s+/g,'_')]=r[k]);return{customerId:String(n.no||n.id_pelanggan||n.customerid||n.id||'').trim(),name:String(n.nama_pelanggan||n.nama||n.name||'').trim(),phone:String(n.telepon||n.no_telepon||n.phone||''),package:normalizePackage(n.paket_internet||n.paket||n.package||''),price:Number(n.nominal_tagihan||n.tarif||n.harga||n.price||0),address:String(n.alamat||n.address||''),installDate:excelDate(n.tanggal_pasang||n.tanggal||n.installdate||''),status:String(n.status||'Aktif').trim()||'Aktif'};}).filter(x=>x.customerId&&x.name&&x.price>=0);document.getElementById('importPreview').textContent=`Ditemukan ${raw.length} baris. ${selectedImport.length} baris memiliki ID dan nama pelanggan yang valid.`;document.getElementById('importBtn').disabled=!selectedImport.length;}catch(err){toast('File tidak dapat dibaca: '+err.message);}});
-function normalizePackage(v){let x=String(v||'').trim().toLowerCase();let opts=['Gogoniti 10M','Semeru 20M','Embung 30M','Dewimiri 50M'];return opts.find(p=>p.toLowerCase()===x)||String(v||'').trim();}
-function excelDate(v){if(!v)return'';if(typeof v==='number'){let d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`:'';}let s=String(v);if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);let d=new Date(s);return isNaN(d)?'':d.toISOString().slice(0,10);}
-window.processImport=async()=>{if(!selectedImport.length)return;let seen=new Set(customers.map(c=>String(c.customerId).toLowerCase()));let fresh=selectedImport.filter(c=>!seen.has(c.customerId.toLowerCase()));let dup=selectedImport.length-fresh.length;if(!fresh.length)return toast('Semua ID pelanggan sudah ada.');try{for(let i=0;i<fresh.length;i+=400){let batch=writeBatch(db);fresh.slice(i,i+400).forEach(c=>{let ref=doc(collection(db,'customers'));batch.set(ref,{...c,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});});await batch.commit();}closeModal('importModal');toast(`${fresh.length} pelanggan berhasil diimport. ${dup} duplikat dilewati.`);}catch(e){toast('Import gagal: '+e.message);}};
+document.getElementById('excelFile').addEventListener('change',async e=>{
+ let f=e.target.files[0];if(!f)return;
+ try{
+  let wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+  let raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+  const keyify=k=>String(k).toLowerCase().trim().replace(/[\s._-]+/g,'_');
+  const get=(o,keys)=>{for(const k of keys){if(o[k]!==undefined&&o[k]!==null&&String(o[k]).trim()!=='')return o[k];}return '';};
+  const moneyValue=v=>{
+   if(typeof v==='number')return v;
+   let s=String(v??'').replace(/[^\d,-]/g,'').replace(/\./g,'').replace(',','.');
+   return Number(s)||0;
+  };
+  let skippedFree=0,invalid=0;
+  selectedImport=raw.map(r=>{
+   let n={};Object.keys(r).forEach(k=>n[keyify(k)]=r[k]);
+   const pkg=String(get(n,['paket_internet','paket','package'])).trim();
+   const price=moneyValue(get(n,['tarif_bulanan','nominal_tagihan','tarif','harga','price']));
+   const id=String(get(n,['id_pelanggan','customer_id','customerid','id'])).trim();
+   const name=String(get(n,['nama_pelanggan','nama','name'])).trim();
+   const isFree=/^free\b/i.test(pkg)||price===0;
+   if(isFree){skippedFree++;return null;}
+   if(!id||!name||price<=0){invalid++;return null;}
+   return {
+    customerId:id,
+    sequence:String(get(n,['no','nomor'])).trim(),
+    name,
+    phone:String(get(n,['no_hp','no_tlp','no_telepon','nomor_hp','telepon','phone','whatsapp'])).trim(),
+    package:normalizePackage(pkg),
+    price,
+    address:String(get(n,['alamat','address'])).trim(),
+    installDate:excelDate(get(n,['tanggal_pasang','tanggal','install_date'])),
+    status:String(get(n,['status'])||'Aktif').trim()||'Aktif'
+   };
+  }).filter(Boolean);
+  const ids=new Set();let duplicateInFile=0;
+  selectedImport=selectedImport.filter(c=>{
+   const k=c.customerId.toLowerCase();
+   if(ids.has(k)){duplicateInFile++;return false;}
+   ids.add(k);return true;
+  });
+  document.getElementById('importPreview').textContent=
+   `Ditemukan ${raw.length} baris. Siap diimpor: ${selectedImport.length} pelanggan berbayar. Dilewati: ${skippedFree} Free/bertarif Rp0, ${invalid} data tidak lengkap/tidak valid, ${duplicateInFile} ID ganda dalam file.`;
+  document.getElementById('importBtn').disabled=!selectedImport.length;
+ }catch(err){selectedImport=[];document.getElementById('importBtn').disabled=true;toast('File tidak dapat dibaca: '+err.message);}
+});
+function normalizePackage(v){
+ let x=String(v||'').trim().toLowerCase();
+ let opts=['Gogoniti 10M','Semeru 20M','Embung 30M','Dewimiri 50M'];
+ return opts.find(p=>p.toLowerCase()===x)||String(v||'').trim();
+}
+function excelDate(v){
+ if(!v)return'';
+ if(typeof v==='number'){let d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`:'';}
+ let s=String(v);if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+ let d=new Date(s);return isNaN(d)?'':d.toISOString().slice(0,10);
+}
+window.processImport=async()=>{
+ if(!selectedImport.length)return;
+ let seen=new Set(customers.map(c=>String(c.customerId||'').toLowerCase()));
+ let fresh=selectedImport.filter(c=>!seen.has(c.customerId.toLowerCase()));
+ let dup=selectedImport.length-fresh.length;
+ if(!fresh.length)return toast('Semua ID pelanggan sudah ada. Tidak ada data baru untuk diimpor.');
+ if(!confirm(`Impor ${fresh.length} pelanggan berbayar ke Firestore? ${dup} ID yang sudah ada akan dilewati. Data pelanggan yang sudah ada tidak akan ditimpa.`))return;
+ try{
+  for(let i=0;i<fresh.length;i+=400){
+   let batch=writeBatch(db);
+   fresh.slice(i,i+400).forEach(c=>{
+    const {sequence,...customer}=c;
+    let ref=doc(collection(db,'customers'));
+    batch.set(ref,{...customer,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+   });
+   await batch.commit();
+  }
+  closeModal('importModal');
+  toast(`${fresh.length} pelanggan berhasil diimport. ${dup} ID yang sudah ada dilewati.`);
+ }catch(e){toast('Import gagal: '+e.message);}
+};
 window.generateInvoices=async()=>{let period=monthKey();let active=customers.filter(c=>(c.status||'Aktif')==='Aktif');let existing=new Set(invoices.filter(i=>i.period===period).map(i=>i.customerDocId));let todo=active.filter(c=>!existing.has(c.docId));if(!todo.length)return toast('Tagihan periode ini sudah dibuat untuk semua pelanggan aktif.');if(!confirm(`Buat ${todo.length} tagihan untuk ${periodName(period)}?`))return;try{for(let i=0;i<todo.length;i+=400){let batch=writeBatch(db);todo.slice(i,i+400).forEach(c=>{let ref=doc(collection(db,'invoices'));let due=new Date();due.setDate(Math.min(billingDueDay,new Date(due.getFullYear(),due.getMonth()+1,0).getDate()));batch.set(ref,{invoiceNo:`INV-${period.replace('-','')}-${c.customerId}`,customerDocId:c.docId,customerId:c.customerId,customerName:c.name,period,amount:Number(c.price),paid:0,status:'Belum Bayar',dueDate:`${period}-${String(Math.min(billingDueDay,new Date(Number(period.slice(0,4)),Number(period.slice(5,7)),0).getDate())).padStart(2,'0')}`,createdAt:serverTimestamp()});});await batch.commit();}toast(`${todo.length} tagihan berhasil dibuat.`);}catch(e){toast('Gagal membuat tagihan: '+e.message);}};
 window.editDueDay=async()=>{let input=prompt('Masukkan tanggal jatuh tempo setiap bulan (1-31):',String(billingDueDay));if(input===null)return;let n=Number(input);if(!Number.isInteger(n)||n<1||n>31)return toast('Tanggal harus antara 1 sampai 31.');try{await setDoc(doc(db,'settings','billing'),{dueDay:n,updatedAt:serverTimestamp()},{merge:true});billingDueDay=n;renderDashboard();toast('Tanggal jatuh tempo berhasil diperbarui.');}catch(e){toast('Gagal menyimpan pengaturan: '+e.message);}};
 window.renderInvoices=()=>{let f=val('invoiceFilter');let list=invoices.filter(i=>!f||i.status===f).sort((a,b)=>(b.period||'').localeCompare(a.period||''));document.getElementById('invoiceRows').innerHTML=list.map(i=>`<tr><td><b>${esc(i.invoiceNo)}</b></td><td>${esc(i.customerName)}</td><td>${esc(periodName(i.period||monthKey()))}</td><td>${esc(i.dueDate||'-')}</td><td><b>${money(i.amount)}</b></td><td><span class="pill ${i.status==='Lunas'?'green':'yellow'}">${esc(i.status)}</span></td><td>${i.status!=='Lunas'?`<button class="btn text-xs" onclick="openPayment('${i.docId}')">Bayar</button>`:''} <button class="btn ghost text-xs" onclick="printInvoice('${i.docId}')">Cetak</button></td></tr>`).join('')||'<tr><td colspan="7" class="text-center muted py-8">Belum ada tagihan.</td></tr>';};
